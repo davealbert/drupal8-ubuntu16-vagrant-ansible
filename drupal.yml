@@ -1,0 +1,71 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    packages:
+      - nginx
+      - mariadb-server
+      - mariadb-client
+      - python-mysqldb
+      - curl
+      - php7.0-fpm
+      - php7.0-mbstring
+      - php7.0-xml
+      - php7.0-mysql
+      - php7.0-common
+      - php7.0-gd
+      - php7.0-json
+      - php7.0-cli
+      - php7.0-curl
+
+    services:
+      - nginx
+      - mysql
+    mysql_root_password: mypass123
+    mysql_user: drupal
+
+  tasks:
+    - name: updates a server
+      apt: update_cache=yes
+
+    - name: upgrade a server
+      apt: upgrade=full
+
+    - name: Install packages
+      apt: pkg={{ item }} state=installed update_cache=no
+      with_items:
+        - "{{ packages }}"
+
+    - name: Ensure services are running
+      service: name={{ item }} enabled=yes state=started
+      tags: mysql
+      with_items:
+        - "{{ services }}"
+
+    - name: Sets the root password
+      mysql_user: user=root password="{{ mysql_root_password }}" host=localhost encrypted=no update_password=always
+
+    - name: Sets the {{ mysql_user }} password
+      mysql_user: user="{{ mysql_user }}" password="{{ mysql_root_password }}" host=localhost encrypted=no update_password=always
+
+    - name: Deletes anonymous MySQL server user for ansible_fqdn
+      mysql_user: user="" host="{{ ansible_fqdn }}" state="absent"
+
+    - name: Deletes anonymous MySQL server user for localhost
+      mysql_user: user="" state="absent"
+
+    - name: Secures the MySQL root user for IPV6 localhost (::1)
+      mysql_user: user="root" password="{{ mysql_root_password }}" host="::1"
+
+    - name: Secures the MySQL root user for IPV4 localhost (127.0.0.1)
+      mysql_user: user="root" password="{{ mysql_root_password }}" host="127.0.0.1"
+
+    - name: Secures the MySQL root user for localhost domain (localhost)
+      mysql_user: user="root" password="{{ mysql_root_password }}" host="localhost"
+
+    - name: Secures the MySQL root user for server_hostname domain
+      mysql_user: user="root" password="{{ mysql_root_password }}" host="{{ ansible_fqdn }}"
+
+    - name: Removes the MySQL test database
+      mysql_db: db=test state=absent
+
