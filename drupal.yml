@@ -21,8 +21,14 @@
     services:
       - nginx
       - mysql
+      - php7.0-fpm
+
     mysql_root_password: mypass123
     mysql_user: drupal
+
+  handlers:
+    - name: restart nginx
+      service: name=nginx state=restarted enabled=yes
 
   tasks:
     - name: updates a server
@@ -68,4 +74,24 @@
 
     - name: Removes the MySQL test database
       mysql_db: db=test state=absent
+
+    - name: Add php file
+      copy: src="index.php" dest="/var/www/html"
+
+    - name: Add nginx config file
+      copy: src="default-php-nginx" dest="/etc/nginx/sites-available/"
+      notify: restart nginx
+
+    - name: Remove default nginx file
+      file: path="/etc/nginx/sites-enabled/default" state=absent
+      notify: restart nginx
+
+    - name: Link to new nginx file
+      file:
+        state: link
+        src: /etc/nginx/sites-available/default-php-nginx
+        dest: /etc/nginx/sites-enabled/default-php-nginx
+      notify: restart nginx
+
+
 
