@@ -8,6 +8,7 @@
       - mariadb-client
       - python-mysqldb
       - curl
+      - wget
       - php7.0-fpm
       - php7.0-mbstring
       - php7.0-xml
@@ -23,6 +24,9 @@
       - mysql
       - php7.0-fpm
 
+    drupal_directory: drupal-8.2.4
+    drupal_file: drupal-8.2.4.tar.gz
+    drupal_url: "https://ftp.drupal.org/files/projects/{{ drupal_file }}"
     mysql_root_password: mypass123
     mysql_user: drupal
 
@@ -31,12 +35,18 @@
       service: name=nginx state=restarted enabled=yes
 
   tasks:
+    ###
+    # Update/Upgrade Ubuntu
+    ###
     - name: updates a server
       apt: update_cache=yes
 
     - name: upgrade a server
       apt: upgrade=full
 
+    ###
+    # Install packages and Enable services
+    ###
     - name: Install packages
       apt: pkg={{ item }} state=installed update_cache=no
       with_items:
@@ -48,6 +58,9 @@
       with_items:
         - "{{ services }}"
 
+    ###
+    # MariaDB setup
+    ###
     - name: Sets the root password
       mysql_user: user=root password="{{ mysql_root_password }}" host=localhost encrypted=no update_password=always
 
@@ -75,6 +88,9 @@
     - name: Removes the MySQL test database
       mysql_db: db=test state=absent
 
+    ###
+    # PHP/nginx config
+    ###
     - name: Add php file
       copy: src="index.php" dest="/var/www/html"
 
@@ -93,5 +109,27 @@
         dest: /etc/nginx/sites-enabled/default-php-nginx
       notify: restart nginx
 
+    ###
+    # Drupal install
+    ###
+    - name: Get Drupal file
+      get_url: url={{ drupal_url }} dest=/usr/src/
 
+    - name: untar Drupal
+      unarchive: src="/usr/src/{{ drupal_file }}" dest=/usr/src/ remote_src=yes
+
+    - name: Copy to html root
+      shell: "rsync -a /usr/src/{{ drupal_directory }}/ /var/www/html/"
+
+    - name: Copy settings
+      shell: "cp /var/www/html/sites/default/default.settings.php /var/www/html/sites/default/settings.php"
+
+    - name: Permissons on /var/www/html
+      file: state=directory owner=www-data dest=/var/www/html recurse=yes
+
+    - name: Create drupal database
+      mysql_db: db=drupal state=present
+
+    - name: grant drupal acces to the drupal DB
+      mysql_user: name="{{ mysql_user }}" priv="drupal.*:ALL,GRANT" state=present
 
