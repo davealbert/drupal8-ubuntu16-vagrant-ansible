@@ -95,7 +95,7 @@
       copy: src="index.php" dest="/var/www/html"
 
     - name: Add nginx config file
-      copy: src="default-php-nginx" dest="/etc/nginx/sites-available/"
+      copy: src="drupal-php-nginx" dest="/etc/nginx/sites-available/"
       notify: restart nginx
 
     - name: Remove default nginx file
@@ -105,8 +105,8 @@
     - name: Link to new nginx file
       file:
         state: link
-        src: /etc/nginx/sites-available/default-php-nginx
-        dest: /etc/nginx/sites-enabled/default-php-nginx
+        src: /etc/nginx/sites-available/drupal-php-nginx
+        dest: /etc/nginx/sites-enabled/drupal-php-nginx
       notify: restart nginx
 
     ###
